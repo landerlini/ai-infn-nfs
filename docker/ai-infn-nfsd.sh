@@ -51,7 +51,7 @@ while true; do
     # /usr/sbin/rpc.statd
 
     echo "Starting NFS in the background..."
-    /usr/sbin/rpc.nfsd --debug 8 --no-udp --no-nfs-version 2 --no-nfs-version 3
+    /usr/sbin/rpc.nfsd --debug 8 --no-udp --no-nfs-version 3
     echo "Exporting File System..."
     if /usr/sbin/exportfs -rv; then
       /usr/sbin/exportfs
