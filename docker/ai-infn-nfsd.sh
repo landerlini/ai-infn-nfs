@@ -83,7 +83,7 @@ while true; do
 done
 
 cd /opt/ai-infn-nfs
-python3 -m uvicorn apiserver:app
+python3 -m uvicorn --host 0.0.0.0 apiserver:app --port 3000
 
 while true; do
 
