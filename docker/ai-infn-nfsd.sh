@@ -4,6 +4,8 @@
 # And then exiting
 trap "stop; exit 0;" SIGTERM SIGINT
 
+adduser -u 9999 anon
+
 stop()
 {
   # We're here because we've seen SIGTERM, likely via a Docker stop command or similar
