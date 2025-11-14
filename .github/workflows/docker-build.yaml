@@ -19,7 +19,7 @@ jobs:
       - name: Build Docker image
         run: |
           IMAGE_NAME=ghcr.io/${{ github.repository }}/ai-infn-nfs:latest
-          docker build -t $IMAGE_NAME .
+          docker build -t $IMAGE_NAME docker/
 
       - name: Push Docker image
         run: |
