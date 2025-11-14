@@ -63,6 +63,8 @@ while true; do
     /usr/sbin/rpc.mountd --debug all --no-udp --no-nfs-version 2 --no-nfs-version 3
 # --exports-file /etc/exports
 
+    cat /etc/exports
+
     # Check if NFS is now running by recording it's PID (if it's not running $pid will be null):
     pid=`pidof rpc.mountd`
 
@@ -83,7 +85,7 @@ while true; do
 done
 
 cd /opt/ai-infn-nfs
-python3 -m uvicorn --host 0.0.0.0 apiserver:app --port 3000
+python3 -m uvicorn --host 0.0.0.0 apiserver:app --port 3000 &
 
 while true; do
 
