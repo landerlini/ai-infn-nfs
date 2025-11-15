@@ -94,14 +94,18 @@ async def ensure_user(name: str, groups: str, _: str = Depends(authadmin)):
         "chown", "-R", f"{uid}:{gid}", homedir
     ])
 
-    subprocess.run([
+    adduser = [
         "adduser",
         f"-D",
         f"-u{uid}",
         f"-s/sbin/nologin",
         f"-G{','.join([name] + groups)}"
         f"-h{homedir}"
-    ])
+    ]
+    logging.info(' '.join(adduser))
+
+    ret = subprocess.run(adduser)
+    print (ret)
 
     return JSONResponse(status_code=200, content=dict(message=f'User {name} ({uid}:{gid}) created'))
 

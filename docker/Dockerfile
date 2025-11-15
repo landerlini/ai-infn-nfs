@@ -14,6 +14,8 @@ RUN pip install fastapi uvicorn
 COPY ai-infn-nfsd.sh /usr/bin/ai-infn-nfsd.sh
 COPY apiserver.py /opt/ai-infn-nfs/apiserver.py
 
+RUN date > /etc/timestamp-release
+
 RUN chmod +x /usr/bin/ai-infn-nfsd.sh
 
 ENTRYPOINT ["/usr/bin/ai-infn-nfsd.sh"]
