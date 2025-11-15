@@ -7,6 +7,14 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 import secrets
 import logging
 import subprocess
+from typing import List, Tuple
+from dataclasses import dataclass
+
+@dataclass(frozen=True)
+class Group:
+    gid: int
+    name: str
+    path: str
 
 
 logging.basicConfig(
@@ -33,6 +41,32 @@ def hash_user(name: str) -> int:
 
 def hash_group(name: str) -> int:
     return zlib.crc32(name.encode('ascii')) % 49000 + 1000
+
+def maybe_create_user(
+        username: str,
+        groupname: str,
+        uid: int,
+        gid: int,
+        homedir: str,
+        groups: List[Group] = None,
+):
+    subprocess.run(["addgroup", f"-g{gid}", groupname])
+    subprocess.run(["mkdir", "-p", homedir])
+    subprocess.run(["chown", "-R", f"{uid}:{gid}", homedir])
+
+    adduser_cmd = ["adduser", "-D", f"-u{uid}", "-s/sbin/nologin", f"-G{username}", f"-h{homedir}", username]
+    logging.info(' '.join(adduser_cmd))
+
+    adduser = subprocess.run(adduser_cmd)
+    if adduser.returncode:
+        raise HTTPException(500, f"Failed ensuring user {username}")
+
+    if groups is not None:
+        for group in groups:
+            subprocess.run(["addgroup", f"-g{group.id}", group.name])
+            subprocess.run(["mkdir", "-p", homedir])
+            subprocess.run(["chown", "-R", f"root:{group.name}", group.path])
+            subprocess.run(["adduser", username, group.name])
 
 @app.get("/uid", response_class=JSONResponse)
 def uid(username: str):
@@ -68,39 +102,24 @@ async def ensure_user(name: str, groups: str, _: str = Depends(authadmin)):
 
     logging.info(f"Ensure existence of user {name}:{gid} ({', '.join(groups)})")
 
-    subprocess.run([
-        "addgroup", "-g", gid, name,
-    ])
-
-    homedir = os.path.join(BASEDIR, f"user-{name}")
-    subprocess.run([
-        "mkdir", "-p", homedir
-    ])
-
-    subprocess.run([
-        "chown", "-R", f"{uid}:{gid}", homedir
-    ])
-
-    adduser_cmd = [
-        "adduser",
-        f"-D",
-        f"-u{uid}",
-        f"-s/sbin/nologin",
-        f"-G{name}",
-        f"-h{homedir}",
-        name
-    ]
-    logging.info(' '.join(adduser_cmd))
-
-    adduser = subprocess.run(adduser_cmd)
-    if adduser.returncode:
-        raise HTTPException(500, f"Failed ensuring user {name}")
-
-    for group in groups:
-        subprocess.run(["addgroup", "-g", str(hash_group(group)), group])
-        subprocess.run(["mkdir", "-p", os.path.join(BASEDIR, f"shared-{group}")])
-        subprocess.run(["chown", "-R", f"root:{group}", os.path.join(BASEDIR, f"shared-{group}")])
-        subprocess.run(["adduser", name, group])
+    maybe_create_user(
+        username=name,
+        groupname=name,
+        uid=uid,
+        gid=gid,
+        homedir=os.path.join(BASEDIR, f"user-{name}"),
+        groups=[Group(gid=hash_group(g), name=g, path=os.path.join(BASEDIR, f'shared-{g}')) for g in groups],
+    )
 
     return JSONResponse(status_code=200, content=dict(message=f'User {name} ({uid}:{gid}) created'))
 
+################################################################################
+import os
+for uid, gid, name, path in [line.split(':') for line in os.environ.get("CLUSTER_SERVICES")]:
+    maybe_create_user(
+        username=name,
+        groupname=name,
+        uid=uid,
+        gid=gid,
+        homedir=os.path.join(BASEDIR, path),
+    )
