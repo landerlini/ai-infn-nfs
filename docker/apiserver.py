@@ -94,7 +94,7 @@ async def ensure_user(name: str, groups: str, _: str = Depends(authadmin)):
         "chown", "-R", f"{uid}:{gid}", homedir
     ])
 
-    adduser = [
+    adduser_cmd = [
         "adduser",
         f"-D",
         f"-u{uid}",
@@ -103,10 +103,11 @@ async def ensure_user(name: str, groups: str, _: str = Depends(authadmin)):
         f"-h{homedir}",
         {name}
     ]
-    logging.info(' '.join(adduser))
+    logging.info(' '.join(adduser_cmd))
 
-    ret = subprocess.run(adduser)
-    print (ret)
+    adduser = subprocess.run(adduser_cmd)
+    if adduser.returncode:
+        raise HTTPException(500, f"Failed ensuring user {name}")
 
     return JSONResponse(status_code=200, content=dict(message=f'User {name} ({uid}:{gid}) created'))
 
