@@ -46,12 +46,12 @@ async def root(user: str = Depends(authadmin)):
 
 @app.get("/ensure-user", response_class=JSONResponse)
 async def ensure_user(uid: int, gid: int, name: str, groups: str, _: str = Depends(authadmin)):
-    groups = groups.split(' ')
+    groups = [g for g in groups.split(' ') if g not in ['', ' ']]
     logging.info(f"Ensure existence of user {name}:{gid} ({', '.join(groups)})")
 
     for group in groups:
         subprocess.run([
-            "addgroup", "-f", group
+            "addgroup", group
         ])
 
         subprocess.run([
@@ -64,7 +64,6 @@ async def ensure_user(uid: int, gid: int, name: str, groups: str, _: str = Depen
 
     subprocess.run([
         "adduser",
-        f"-f",
         f"-u{uid}",
         f"-g{gid}",
         f"-s/sbin/nologin",
