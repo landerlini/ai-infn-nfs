@@ -51,7 +51,7 @@ async def ensure_user(uid: int, gid: int, name: str, groups: str, _: str = Depen
 
     for group in groups:
         subprocess.run([
-            "groupadd", "-f", group
+            "addgroup", "-f", group
         ])
 
         subprocess.run([
@@ -63,7 +63,7 @@ async def ensure_user(uid: int, gid: int, name: str, groups: str, _: str = Depen
         ])
 
     subprocess.run([
-        "useradd",
+        "adduser",
         f"-f",
         f"-u{uid}",
         f"-g{gid}",
