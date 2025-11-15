@@ -115,7 +115,11 @@ async def ensure_user(name: str, groups: str, _: str = Depends(authadmin)):
 
 ################################################################################
 import os
-for uid, gid, name, path in [line.split(':') for line in os.environ.get("CLUSTER_SERVICES", "").split("\n")]:
+for values in [line.split(':') for line in os.environ.get("CLUSTER_SERVICES", "").split("\n")]:
+    if len(values) != 4:
+        logging.warning(f"Ignoring CLUSTER_SERVICE: {values}")
+        continue
+
     maybe_create_user(
         username=name,
         groupname=name,
