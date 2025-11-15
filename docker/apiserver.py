@@ -120,6 +120,8 @@ for values in [line.split(':') for line in os.environ.get("CLUSTER_SERVICES", ""
         logging.warning(f"Ignoring CLUSTER_SERVICE: {values}")
         continue
 
+    uid, gid, name, path = values
+
     maybe_create_user(
         username=name,
         groupname=name,
