@@ -115,7 +115,7 @@ async def ensure_user(name: str, groups: str, _: str = Depends(authadmin)):
 
 ################################################################################
 import os
-for uid, gid, name, path in [line.split(':') for line in os.environ.get("CLUSTER_SERVICES")]:
+for uid, gid, name, path in [line.split(':') for line in os.environ.get("CLUSTER_SERVICES", "").split("\n")]:
     maybe_create_user(
         username=name,
         groupname=name,
