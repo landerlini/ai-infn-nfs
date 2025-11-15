@@ -100,7 +100,8 @@ async def ensure_user(name: str, groups: str, _: str = Depends(authadmin)):
         f"-u{uid}",
         f"-s/sbin/nologin",
         f"-G{','.join([name] + groups)}"
-        f"-h{homedir}"
+        f"-h{homedir}",
+        {name}
     ]
     logging.info(' '.join(adduser))
 
