@@ -85,20 +85,22 @@ async def ensure_user(name: str, groups: str, _: str = Depends(authadmin)):
         "addgroup", "-g", gid, name,
     ])
 
+    homedir = os.path.join(BASEDIR, f"user-{name}")
+    subprocess.run([
+        "mkdir", "-p", homedir
+    ])
+
+    subprocess.run([
+        "chown", "-R", f"{uid}:{gid}", homedir
+    ])
+
     subprocess.run([
         "adduser",
         f"-D",
         f"-u{uid}",
         f"-s/sbin/nologin",
         f"-G{','.join([name] + groups)}"
-    ])
-
-    subprocess.run([
-        "mkdir", "-p", os.path.join(BASEDIR, f"user-{name}")
-    ])
-
-    subprocess.run([
-        "chown", "-R", f"{uid}:{gid}", os.path.join(BASEDIR, f"user-{name}")
+        f"-h{homedir}"
     ])
 
     return JSONResponse(status_code=200, content=dict(message=f'User {name} ({uid}:{gid}) created'))
