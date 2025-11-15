@@ -1,4 +1,5 @@
 import os
+import zlib
 from fastapi.responses import JSONResponse
 
 from fastapi import FastAPI, Depends, HTTPException, status
@@ -27,6 +28,21 @@ if not USERNAME:
 if not PASSWORD:
     raise ValueError("Invalid HTTP_PASSWORD for administration tasks")
 
+def hash_user(name: str) -> int:
+    return zlib.crc32(name.encode('ascii')) % 200000 + 50000
+
+def hash_group(name: str) -> int:
+    return zlib.crc32(name.encode('ascii')) % 49000 + 1000
+
+@app.get("/uid", response_class=JSONResponse)
+def uid(username: str):
+    ## Here one should implement lookup to avoid collisions
+    return JSONResponse(status_code=200, contents=dict(value=hash_user(username)))
+
+@app.get("/gid", response_class=JSONResponse)
+def uid(groupname: str):
+    ## Here one should implement lookup to avoid collisions
+    return JSONResponse(status_code=200, contents=dict(value=hash_group(groupname)))
 
 def authadmin(credentials: HTTPBasicCredentials = Depends(security)) -> str:
     correct_username = secrets.compare_digest(credentials.username, USERNAME)
@@ -45,13 +61,16 @@ async def root(user: str = Depends(authadmin)):
     return {"message": f"Hello, {user}!"}
 
 @app.get("/ensure-user", response_class=JSONResponse)
-async def ensure_user(uid: int, gid: int, name: str, groups: str, _: str = Depends(authadmin)):
+async def ensure_user(name: str, groups: str, _: str = Depends(authadmin)):
     groups = [g for g in groups.split(' ') if g not in ['', ' ']]
+    uid = str(hash_user(name))
+    gid = str(hash_user(name))
+
     logging.info(f"Ensure existence of user {name}:{gid} ({', '.join(groups)})")
 
     for group in groups:
         subprocess.run([
-            "addgroup", group
+            "addgroup", "-g", str(hash_group(group)), group
         ])
 
         subprocess.run([
@@ -63,11 +82,15 @@ async def ensure_user(uid: int, gid: int, name: str, groups: str, _: str = Depen
         ])
 
     subprocess.run([
+        "addgroup", "-g", gid, name,
+    ])
+
+    subprocess.run([
         "adduser",
+        f"-D",
         f"-u{uid}",
-        f"-g{gid}",
         f"-s/sbin/nologin",
-        f"-G{','.join(groups)}"
+        f"-G{','.join([name] + groups)}"
     ])
 
     subprocess.run([
