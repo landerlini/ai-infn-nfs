@@ -98,7 +98,7 @@ async def ensure_user(name: str, groups: str, _: str = Depends(authadmin)):
 
     for group in groups:
         subprocess.run(["addgroup", "-g", str(hash_group(group)), group])
-        subprocess.run(["mkdir", "-p", os.path.join(BASEDIR, f"shared-{group}")]
+        subprocess.run(["mkdir", "-p", os.path.join(BASEDIR, f"shared-{group}"])
         subprocess.run(["chown", "-R", f"root:{group}", os.path.join(BASEDIR, f"shared-{group}")])
         subprocess.run(["adduser", name, group])
 
