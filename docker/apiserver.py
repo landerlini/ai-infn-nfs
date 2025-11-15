@@ -68,19 +68,6 @@ async def ensure_user(name: str, groups: str, _: str = Depends(authadmin)):
 
     logging.info(f"Ensure existence of user {name}:{gid} ({', '.join(groups)})")
 
-    for group in groups:
-        subprocess.run([
-            "addgroup", "-g", str(hash_group(group)), group
-        ])
-
-        subprocess.run([
-            "mkdir", "-p", os.path.join(BASEDIR, f"shared-{group}"),
-        ])
-
-        subprocess.run([
-            "chown", "-R", f"root:{group}", os.path.join(BASEDIR, f"shared-{group}"),
-        ])
-
     subprocess.run([
         "addgroup", "-g", gid, name,
     ])
@@ -99,7 +86,7 @@ async def ensure_user(name: str, groups: str, _: str = Depends(authadmin)):
         f"-D",
         f"-u{uid}",
         f"-s/sbin/nologin",
-        f"-G{','.join([name] + groups)}",
+        f"-G{name}",
         f"-h{homedir}",
         name
     ]
@@ -108,6 +95,12 @@ async def ensure_user(name: str, groups: str, _: str = Depends(authadmin)):
     adduser = subprocess.run(adduser_cmd)
     if adduser.returncode:
         raise HTTPException(500, f"Failed ensuring user {name}")
+
+    for group in groups:
+        subprocess.run(["addgroup", "-g", str(hash_group(group)), group])
+        subprocess.run(["mkdir", "-p", os.path.join(BASEDIR, f"shared-{group}")]
+        subprocess.run(["chown", "-R", f"root:{group}", os.path.join(BASEDIR, f"shared-{group}")])
+        subprocess.run(["adduser", name, group])
 
     return JSONResponse(status_code=200, content=dict(message=f'User {name} ({uid}:{gid}) created'))
 
