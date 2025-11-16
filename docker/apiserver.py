@@ -143,6 +143,11 @@ def authadmin(credentials: HTTPBasicCredentials = Depends(security)) -> str:
 async def root(user: str = Depends(authadmin)):
     return {"message": f"Hello, {user}!"}
 
+
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}
+
 @app.get("/ensure-user", response_class=JSONResponse)
 async def ensure_user(name: str, groups: Optional[str] = None, _: str = Depends(authadmin)):
     groups = [g for g in groups.split(' ') if g not in ['', ' ']]
