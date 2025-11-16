@@ -7,7 +7,7 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 import secrets
 import logging
 import subprocess
-from typing import List, Tuple
+from typing import List, Optional
 from dataclasses import dataclass
 
 @dataclass(frozen=True)
