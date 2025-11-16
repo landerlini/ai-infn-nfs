@@ -38,9 +38,12 @@ if not USERNAME:
 if not PASSWORD:
     raise ValueError("Invalid HTTP_PASSWORD for administration tasks")
 
-def handle_collision(name: str, computed_hash: int) -> int:
+def handle_collision(name: str, computed_hash: int, max_recursion_depth: int = 100) -> int:
+    if max_recursion_depth == 0:
+        raise HTTPException(500, f"Too many resources with names colliding with: {name}")
+
     with sqlite3.connect(DBFILE) as db:
-        db.execute("CREATE IF NOT EXISTS TABLE hashes (hash INTEGER PRIMARY KEY, name TEXT);")
+        db.execute("CREATE TABLE IF NOT EXISTS hashes (hash INTEGER PRIMARY KEY, name TEXT);")
 
         # Case 1. User exists and it is registered with its own hash. Most frequent case, treated separately.
         names = db.execute("SELECT name FROM hashes WHERE hash = ?;", computed_hash).fetchall()
@@ -50,18 +53,18 @@ def handle_collision(name: str, computed_hash: int) -> int:
         # Case 2. User exists but it's registered with a different hash
         hashes = db.execute("SELECT hash FROM hashes WHERE name = ?;", name).fetchall()
         if len(hashes) == 1:
-            return hashes[0]
+            return hashes[0][0]
 
         # Case 3. User is not registered and no other user has the same hash.
-        if len(hashes) == 0 and len(names) == 0:
-            hashes = db.execute("INSERT INTO hashes (hash, name) VALUES (?, ?);", (computed_hash, name)).fetchall()
-            return computed_hash
+        while max_recursion_depth:
+            try:
+                db.execute("INSERT INTO hashes (hash, name) VALUES (?, ?);", (computed_hash, name))
+                return computed_hash
+            except sqlite3.IntegrityError:
+                max_recursion_depth -= 1
+                computed_hash += 1
 
-        # Case 4. Collision. While trying to register a new user, another user with the same id is found
-        if len(hashes) == 0 and len(names) > 0:
-            handle_collision(name, computed_hash + 1)
-
-        logging.critical(f"Something unpleasent happend with the database")
+        logging.critical(f"Something bad happened with the database")
         raise HTTPException(500, "Failed handling user/group id collision")
 
 
