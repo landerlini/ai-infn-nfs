@@ -99,6 +99,7 @@ async def ensure_user(name: str, groups: str, _: str = Depends(authadmin)):
     groups = [g for g in groups.split(' ') if g not in ['', ' ']]
     uid = str(hash_user(name))
     gid = str(hash_user(name))
+    homedir=os.path.join(BASEDIR, f"user-{name}")
 
     logging.info(f"Ensure existence of user {name}:{gid} ({', '.join(groups)})")
 
@@ -107,11 +108,21 @@ async def ensure_user(name: str, groups: str, _: str = Depends(authadmin)):
         groupname=name,
         uid=uid,
         gid=gid,
-        homedir=os.path.join(BASEDIR, f"user-{name}"),
+        homedir=homedir,
         groups=[Group(gid=hash_group(g), name=g, path=os.path.join(BASEDIR, f'shared-{g}')) for g in groups],
     )
 
-    return JSONResponse(status_code=200, content=dict(message=f'User {name} ({uid}:{gid}) created'))
+    return JSONResponse(
+        status_code=200,
+        content=dict(
+            message=f'User {name} ({uid}:{gid}) created',
+            username=name,
+            groupname=name,
+            uid=uid,
+            gid=gid,
+            homedir=homedir,
+            groups=groups,
+        ))
 
 ################################################################################
 import os
