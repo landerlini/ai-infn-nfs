@@ -105,6 +105,7 @@ def maybe_create_user(
     subprocess.run(["addgroup", f"-g{gid}", groupname])
     subprocess.run(["mkdir", "-p", homedir])
     subprocess.run(["chown", "-R", f"{uid}:{gid}", homedir])
+    subprocess.run(["chmod", "700", homedir])
 
     adduser_cmd = ["adduser", "-D", f"-u{uid}", "-s/sbin/nologin", f"-G{username}", f"-h{homedir}", username]
     logging.info(' '.join(adduser_cmd))
