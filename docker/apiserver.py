@@ -24,6 +24,14 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S"
 )
 
+# Avoid logging health check
+class HealthFilter(logging.Filter):
+    def filter(self, record):
+        return "/health" not in record.getMessage()
+
+logging.getLogger("uvicorn.access").addFilter(HealthFilter())
+
+
 app = FastAPI()
 security = HTTPBasic()
 
