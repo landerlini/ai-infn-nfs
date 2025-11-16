@@ -47,12 +47,14 @@ def handle_collision(name: str, computed_hash: int, max_recursion_depth: int = 1
 
         # Case 1. User exists and it is registered with its own hash. Most frequent case, treated separately.
         names = db.execute("SELECT name FROM hashes WHERE hash = ?;", (computed_hash,)).fetchall()
-        if len(names) == 1:
+        if len(names) == 1 and names[0][0] == name:
+            logging.info(f"Collision check: {name} was known with id {computed_hash}")
             return computed_hash
 
         # Case 2. User exists but it's registered with a different hash
         hashes = db.execute("SELECT hash FROM hashes WHERE name = ?;", (name,)).fetchall()
         if len(hashes) == 1:
+            logging.info(f"Collision check: {name} was known with id {hashes[0][0]} to prevent collision with {names}")
             return hashes[0][0]
 
         # Case 3. User is not registered and no other user has the same hash.
