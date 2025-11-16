@@ -197,4 +197,7 @@ for values in [line.split(':') for line in os.environ.get("ANON_DIRS", "").split
         continue
 
     path, mode = values
+    if not path.startswith("/"):
+        path = os.path.join(BASEDIR, path)
+
     maybe_create_public(path, mode)
