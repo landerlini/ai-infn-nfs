@@ -67,7 +67,7 @@ def maybe_create_user(
 
     if groups is not None:
         for group in groups:
-            subprocess.run(["addgroup", f"-g{group.id}", group.name])
+            subprocess.run(["addgroup", f"-g{group.gid}", group.name])
             subprocess.run(["mkdir", "-p", homedir])
             subprocess.run(["chown", "-R", f"root:{group.name}", group.path])
             subprocess.run(["adduser", username, group.name])
