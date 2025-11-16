@@ -57,9 +57,12 @@ def maybe_create_user(
     adduser_cmd = ["adduser", "-D", f"-u{uid}", "-s/sbin/nologin", f"-G{username}", f"-h{homedir}", username]
     logging.info(' '.join(adduser_cmd))
 
-    adduser = subprocess.run(adduser_cmd)
+    adduser = subprocess.run(adduser_cmd, capture_output=True)
     if adduser.returncode:
-        raise HTTPException(500, f"Failed ensuring user {username}")
+        if 'already in use' in str(adduser.stderr, 'ascii'):
+            logging.warning(f"User '{username}' exists, no check performed on consistency of uid, home and group")
+        else:
+            raise HTTPException(500, f"Failed ensuring user {username}")
 
     if groups is not None:
         for group in groups:
