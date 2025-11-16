@@ -161,4 +161,4 @@ for values in [line.split(':') for line in os.environ.get("ANON_DIRS", "").split
         continue
 
     path, mode = values
-    maybe_create_dir(path, mode)
+    maybe_create_public(path, mode)
