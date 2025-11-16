@@ -140,7 +140,7 @@ async def ensure_user(name: str, groups: Optional[str] = None, _: str = Depends(
 
 ################################################################################
 import os
-for values in [line.split(':') for line in os.environ.get("CLUSTER_SERVICES", "").split("\n")]:
+for values in [line.split(':') for line in os.environ.get("CLUSTER_SERVICES", "").split("\n") if len(line) > 0]:
     if len(values) != 4:
         logging.warning(f"Ignoring CLUSTER_SERVICE: {values}")
         continue
@@ -155,8 +155,8 @@ for values in [line.split(':') for line in os.environ.get("CLUSTER_SERVICES", ""
         homedir=os.path.join(BASEDIR, path),
     )
 
-for values in [line.split(':') for line in os.environ.get("ANON_DIRS", "").split("\n")]:
-    if len(values) != 4:
+for values in [line.split(':') for line in os.environ.get("ANON_DIRS", "").split("\n") if len(line) > 0]:
+    if len(values) != 2:
         logging.warning(f"Ignoring ANON_DIR: {values}")
         continue
 
