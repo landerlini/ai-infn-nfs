@@ -70,7 +70,7 @@ def maybe_create_user(
             subprocess.run(["addgroup", f"-g{group.gid}", group.name])
             subprocess.run(["mkdir", "-p", group.path])
             subprocess.run(["chown", "-R", f"root:{group.name}", group.path])
-            subprocess.run(["chmod", "g+s", group.path])
+            subprocess.run(["chmod", "g+ws", "-R", group.path])
             subprocess.run(["adduser", username, group.name])
 
 @app.get("/uid", response_class=JSONResponse)
