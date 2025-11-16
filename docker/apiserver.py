@@ -59,10 +59,10 @@ def maybe_create_user(
 
     adduser = subprocess.run(adduser_cmd, capture_output=True)
     if adduser.returncode:
-        if 'already in use' in str(adduser.stdout, 'ascii'):
+        if 'in use' in str(adduser.stderr, 'ascii'):
             logging.warning(f"User '{username}' exists, no check performed on consistency of uid, home and group")
         else:
-            logging.critical(f"Failure with {username}. \n{adduser.stdout}\n{adduser.stderr}\n")
+            logging.critical(f"Failure creating {username}: {adduser.returncode}. \n{adduser.stdout}\n{adduser.stderr}\n")
             raise HTTPException(500, f"Failed ensuring user {username}")
 
     if groups is not None:
