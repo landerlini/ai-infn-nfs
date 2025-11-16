@@ -107,6 +107,7 @@ async def ensure_user(name: str, groups: Optional[str] = None, _: str = Depends(
     homedir=os.path.join(BASEDIR, f"user-{name}")
 
     logging.info(f"Ensure existence of user {name}:{gid} ({', '.join(groups)})")
+    groups = [Group(gid=hash_group(g), name=g, path=os.path.join(BASEDIR, f'shared-{g}')) for g in groups]
 
     maybe_create_user(
         username=name,
@@ -114,7 +115,7 @@ async def ensure_user(name: str, groups: Optional[str] = None, _: str = Depends(
         uid=uid,
         gid=gid,
         homedir=homedir,
-        groups=[Group(gid=hash_group(g), name=g, path=os.path.join(BASEDIR, f'shared-{g}')) for g in groups],
+        groups=groups,
     )
 
     return JSONResponse(
@@ -126,7 +127,7 @@ async def ensure_user(name: str, groups: Optional[str] = None, _: str = Depends(
             uid=uid,
             gid=gid,
             homedir=homedir,
-            groups=groups,
+            groups=[dict(gid=g.gid, name=g.name) for g in groups],
         ))
 
 ################################################################################
