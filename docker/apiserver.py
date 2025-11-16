@@ -46,12 +46,12 @@ def handle_collision(name: str, computed_hash: int, max_recursion_depth: int = 1
         db.execute("CREATE TABLE IF NOT EXISTS hashes (hash INTEGER PRIMARY KEY, name TEXT);")
 
         # Case 1. User exists and it is registered with its own hash. Most frequent case, treated separately.
-        names = db.execute("SELECT name FROM hashes WHERE hash = ?;", computed_hash).fetchall()
+        names = db.execute("SELECT name FROM hashes WHERE hash = ?;", (computed_hash,)).fetchall()
         if len(names) == 1:
             return computed_hash
 
         # Case 2. User exists but it's registered with a different hash
-        hashes = db.execute("SELECT hash FROM hashes WHERE name = ?;", name).fetchall()
+        hashes = db.execute("SELECT hash FROM hashes WHERE name = ?;", (name,)).fetchall()
         if len(hashes) == 1:
             return hashes[0][0]
 
