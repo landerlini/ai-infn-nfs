@@ -42,6 +42,14 @@ def hash_user(name: str) -> int:
 def hash_group(name: str) -> int:
     return zlib.crc32(name.encode('ascii')) % 49000 + 1000
 
+def maybe_create_public(
+        path: str,
+        mode: "1777",
+):
+    subprocess.run(["mkdir", "-p", path])
+    subprocess.run(["chown", "-R", f"root:anon", path])
+    subprocess.run(["chmod", mode, path])
+
 def maybe_create_user(
         username: str,
         groupname: str,
@@ -70,7 +78,7 @@ def maybe_create_user(
             subprocess.run(["addgroup", f"-g{group.gid}", group.name])
             subprocess.run(["mkdir", "-p", group.path])
             subprocess.run(["chown", "-R", f"root:{group.name}", group.path])
-            subprocess.run(["chmod", "g+ws", "-R", group.path])
+            subprocess.run(["chmod", "g+ws", group.path])
             subprocess.run(["adduser", username, group.name])
 
 @app.get("/uid", response_class=JSONResponse)
@@ -146,3 +154,11 @@ for values in [line.split(':') for line in os.environ.get("CLUSTER_SERVICES", ""
         gid=gid,
         homedir=os.path.join(BASEDIR, path),
     )
+
+for values in [line.split(':') for line in os.environ.get("ANON_DIRS", "").split("\n")]:
+    if len(values) != 4:
+        logging.warning(f"Ignoring ANON_DIR: {values}")
+        continue
+
+    path, mode = values
+    maybe_create_dir(path, mode)
