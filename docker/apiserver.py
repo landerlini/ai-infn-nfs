@@ -158,14 +158,15 @@ def health_check():
     return {"status": "ok"}
 
 @app.get("/ensure-user", response_class=JSONResponse)
-async def ensure_user(name: str, groups: Optional[str] = None, _: str = Depends(authadmin)):
+async def ensure_user(name: str, groups: Optional[str] = None, tenancy: Optional[str] = None, _: str = Depends(authadmin)):
     groups = [g for g in groups.split(' ') if g not in ['', ' ']]
     uid = str(hash_user(name))
     gid = str(hash_user(name))
-    homedir=os.path.join(BASEDIR, f"user-{name}")
+    basedir = os.path.join(BASEDIR, tenancy) if tenancy else BASEDIR
+    homedir = os.path.join(basedir, f"user-{name}")
 
     logging.info(f"Ensure existence of user {name}:{gid} ({', '.join(groups)})")
-    groups = [Group(gid=hash_group(g), name=g, path=os.path.join(BASEDIR, f'shared-{g}')) for g in groups]
+    groups = [Group(gid=hash_group(g), name=g, path=os.path.join(basedir, f'shared-{g}')) for g in groups]
 
     maybe_create_user(
         username=name,
@@ -189,7 +190,6 @@ async def ensure_user(name: str, groups: Optional[str] = None, _: str = Depends(
         ))
 
 ################################################################################
-import os
 for values in [line.split(':') for line in os.environ.get("CLUSTER_SERVICES", "").split("\n") if len(line) > 0]:
     if len(values) != 4:
         logging.warning(f"Ignoring CLUSTER_SERVICE: {values}")
