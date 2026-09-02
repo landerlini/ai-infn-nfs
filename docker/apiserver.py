@@ -1,6 +1,7 @@
 import os
+from urllib.request import Request
 import zlib
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 import sqlite3
 from datetime import datetime, timedelta
 from dataclasses import dataclass
@@ -267,6 +268,19 @@ def get_keys(user: str):
             """, (user,))
         keys = [row[0] for row in cursor.fetchall()]
     return "\n".join(keys)
+
+def localhost_only(request: Request):
+    client_ip = request.client.host
+    if client_ip not in ("127.0.0.1", "::1"):
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+@app.get("/passwd", response_class=FileResponse)
+def get_passwd(_: None = Depends(localhost_only)):
+    return FileResponse("/etc/passwd", media_type="text/plain")
+
+@app.get("/group", response_class=FileResponse)
+def get_group(_: None = Depends(localhost_only)):
+    return FileResponse("/etc/group", media_type="text/plain")
 
 ################################################################################
 for values in [line.split(':') for line in os.environ.get("CLUSTER_SERVICES", "").split("\n") if len(line) > 0]:
