@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from dataclasses import dataclass
 
 from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.responses import PlainTextResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 import secrets
 import logging
