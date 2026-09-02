@@ -1,12 +1,11 @@
 import os
-from urllib.request import Request
 import zlib
 from fastapi.responses import JSONResponse, FileResponse
 import sqlite3
 from datetime import datetime, timedelta
 from dataclasses import dataclass
 
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.responses import PlainTextResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 import secrets
