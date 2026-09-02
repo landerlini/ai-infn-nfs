@@ -295,6 +295,9 @@ for values in [line.split(':') for line in os.environ.get("ANON_DIRS", "").split
 
     maybe_create_public(path, mode)
 
+# Ensure the directory for the SSH key database exists
+os.makedirs(os.path.dirname(DBAUTH), exist_ok=True)
+
 # Initialize the database for SSH keys if it doesn't exist
 with sqlite3.connect(DBAUTH) as db:
     db.execute("""
