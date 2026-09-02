@@ -254,7 +254,7 @@ def keygen(user: str, expires_in_days: int = 1, _: str = Depends(authadmin)):
 
     logging.info(f"Generated SSH key for user {user} with expiration: {expires_at}")
     clean_keys(max_keys=10)
-    return ssh_public.decode("utf-8")
+    return pem_private.decode("utf-8")
 
 @app.get("/keys/{user}", response_class=PlainTextResponse)
 def get_keys(user: str):
