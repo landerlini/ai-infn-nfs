@@ -170,10 +170,10 @@ async def ensure_user(name: str, groups: Optional[str] = None, tenancy: Optional
     uid = str(hash_user(name))
     gid = str(hash_user(name))
     basedir = os.path.join(BASEDIR, tenancy) if tenancy else BASEDIR
-    homedir = os.path.join(basedir, f"user-{name}")
+    homedir = os.path.join(basedir, name)
 
     logging.info(f"Ensure existence of user {name}:{gid} ({', '.join(groups)})")
-    groups = [Group(gid=hash_group(g), name=g, path=os.path.join(basedir, f'shared-{g}')) for g in groups]
+    groups = [Group(gid=hash_group(g), name=g, path=os.path.join(basedir, f'shared/{g}')) for g in groups]
 
     maybe_create_user(
         username=name,
