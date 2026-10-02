@@ -9,7 +9,7 @@ RUN apk add --no-cache --update --verbose nfs-utils bash iproute2 && \
     echo "rpc_pipefs    /var/lib/nfs/rpc_pipefs rpc_pipefs      defaults        0       0" >> /etc/fstab && \
     echo "nfsd  /proc/fs/nfsd   nfsd    defaults        0       0" >> /etc/fstab
 
-RUN pip install fastapi uvicorn
+RUN pip install fastapi uvicorn cryptography
 
 COPY ai-infn-nfsd.sh /usr/bin/ai-infn-nfsd.sh
 COPY apiserver.py /opt/ai-infn-nfs/apiserver.py

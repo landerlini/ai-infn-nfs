@@ -1,15 +1,19 @@
 import os
 import zlib
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 import sqlite3
+from datetime import datetime, timedelta
+from dataclasses import dataclass
 
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, Request
+from fastapi.responses import PlainTextResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 import secrets
 import logging
 import subprocess
 from typing import List, Optional
-from dataclasses import dataclass
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import ed25519
 
 
 @dataclass(frozen=True)
@@ -42,6 +46,8 @@ USERNAME = os.environ.get("HTTP_USERNAME")
 PASSWORD = os.environ.get("HTTP_PASSWORD")
 BASEDIR = os.environ.get("BASEDIR", "/exports")
 DBFILE = os.environ.get("DBFILE", os.path.join(BASEDIR, "hashes.sqlite"))
+DBAUTH = os.environ.get("DBAUTH", os.path.join("/run", "aiinfn", "dbauth"))
+EXPIRATION_DAYS = int(os.environ.get("EXPIRATION_DAYS", "30"))
 
 if not USERNAME:
     raise ValueError("Invalid HTTP_USERNAME for administration tasks")
@@ -207,11 +213,11 @@ async def ensure_user(
     uid = str(hash_user(name))
     gid = str(hash_user(name))
     basedir = os.path.join(BASEDIR, tenancy) if tenancy else BASEDIR
-    homedir = os.path.join(basedir, f"user-{name}")
+    homedir = os.path.join(basedir, name)
 
     logging.info(f"Ensure existence of user {name}:{gid} ({', '.join(groups)})")
     groups = [
-        Group(gid=hash_group(g), name=g, path=os.path.join(basedir, f"shared-{g}"))
+        Group(gid=hash_group(g), name=g, path=os.path.join(basedir, f"shared/{g}"))
         for g in groups
     ]
 
@@ -236,6 +242,113 @@ async def ensure_user(
             groups=[dict(gid=g.gid, name=g.name) for g in groups],
         ),
     )
+
+
+def clean_keys(max_keys: int = 10):
+    with sqlite3.connect(DBAUTH) as db:
+        ((n_dropped_keys, n_valid_keys),) = db.execute(
+            """
+            SELECT 
+                COUNT(*) AS n_dropped_keys,
+                COUNT(*) FILTER(WHERE expires_at > datetime('now')) AS n_valid_keys
+            FROM ssh_keys
+            WHERE rowid NOT IN (
+                SELECT rowid 
+                FROM ssh_keys 
+                ORDER BY expires_at DESC 
+                LIMIT ?
+            );
+        """,
+            (max_keys,),
+        ).fetchall()
+
+        db.execute(
+            """
+            DELETE FROM ssh_keys
+            WHERE rowid NOT IN (
+                SELECT rowid 
+                FROM ssh_keys 
+                ORDER BY expires_at DESC 
+                LIMIT ?
+            );
+        """,
+            (max_keys,),
+        )
+
+        if n_dropped_keys > 0 and n_valid_keys == 0:
+            logging.info(f"Cleaned up {n_dropped_keys} expired SSH keys")
+        elif n_dropped_keys > 0 and n_valid_keys > 0:
+            logging.warning(
+                f"Cleaned up {n_dropped_keys} expired SSH keys. {n_valid_keys} were still valid."
+            )
+
+
+@app.get("/keygen", response_class=PlainTextResponse)
+def keygen(user: str, expires_in_days: int = 1, _: str = Depends(authadmin)):
+    if expires_in_days < 1 or expires_in_days > EXPIRATION_DAYS:
+        raise HTTPException(
+            400, f"expires_in_days must be between 1 and {EXPIRATION_DAYS}"
+        )
+
+    private_key = ed25519.Ed25519PrivateKey.generate()
+    public_key = private_key.public_key()
+
+    pem_private = private_key.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.OpenSSH,
+        encryption_algorithm=serialization.NoEncryption(),
+    )
+
+    ssh_public = public_key.public_bytes(
+        encoding=serialization.Encoding.OpenSSH,
+        format=serialization.PublicFormat.OpenSSH,
+    )
+
+    expires_at = (datetime.now() + timedelta(days=expires_in_days)).isoformat()
+
+    with sqlite3.connect(DBAUTH) as db:
+        db.execute(
+            """
+            INSERT INTO ssh_keys (user, public_key, expires_at) VALUES (?, ?, ?);
+        """,
+            (user, ssh_public.decode("utf-8"), expires_at),
+        )
+
+    logging.info(f"Generated SSH key for user {user} with expiration: {expires_at}")
+    clean_keys(max_keys=10)
+    return pem_private.decode("utf-8")
+
+
+@app.get("/keys/{user}", response_class=PlainTextResponse)
+def get_keys(user: str):
+    with sqlite3.connect(DBAUTH) as db:
+        cursor = db.execute(
+            """
+            SELECT public_key 
+            FROM ssh_keys 
+            WHERE   user = ?
+                AND expires_at > datetime('now')
+            """,
+            (user,),
+        )
+        keys = [row[0] for row in cursor.fetchall()]
+    return "\n".join(keys)
+
+
+def localhost_only(request: Request):
+    client_ip = request.client.host
+    if client_ip not in ("127.0.0.1", "::1"):
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+
+@app.get("/passwd", response_class=FileResponse)
+def get_passwd(_: None = Depends(localhost_only)):
+    return FileResponse("/etc/passwd", media_type="text/plain")
+
+
+@app.get("/group", response_class=FileResponse)
+def get_group(_: None = Depends(localhost_only)):
+    return FileResponse("/etc/group", media_type="text/plain")
 
 
 ################################################################################
@@ -272,3 +385,16 @@ for values in [
         path = os.path.join(BASEDIR, path)
 
     maybe_create_public(path, mode)
+
+# Ensure the directory for the SSH key database exists
+os.makedirs(os.path.dirname(DBAUTH), exist_ok=True)
+
+# Initialize the database for SSH keys if it doesn't exist
+with sqlite3.connect(DBAUTH) as db:
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS ssh_keys (
+            user TEXT ,
+            public_key TEXT,
+            expires_at TIMESTAMP DEFAULT (datetime('now', '+1 day'))
+            );
+    """)
